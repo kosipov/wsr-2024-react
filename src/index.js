@@ -6,13 +6,32 @@ import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { Register } from './components/Register';
 import { Login } from './components/Login';
 import { redirect } from "react-router-dom";
-import {deleteFile, getFile, getFilesRequest, login, register} from './api';
+import {
+  addFileAccessRequest,
+  deleteFileAccessRequest,
+  deleteFileRequest, downloadFileRequest,
+  editFileRequest,
+  getFilesRequest,
+  login,
+  register, uploadFileRequest
+} from './api';
 import {Error} from './components/Error';
 import { FileList } from './components/FileList';
 import {File} from "./components/File";
+import {FileAccess} from "./components/FileAccess";
+import {FileUpload} from "./components/FileUpload";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
+export const downloadFile = async (fileUrl, fileName) => {
+  const result = await downloadFileRequest(fileUrl);
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(result);
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 export const registerAction = async ({ request, params }) => {
   const formData = await request.formData();
@@ -51,17 +70,58 @@ export const getFiles = async () => {
 }
 
 export const deleteFileAction = async ({params}) => {
-  await deleteFile(params.fileId);
+  console.log(params);
+  await deleteFileRequest(params.fileId);
+
+  return redirect("/files")
+}
+
+export const editFileAction = async ({request, params}) => {
+  const formData = await request.formData();
+  await editFileRequest(params.fileId, formData.get("fileName"));
 
   return redirect("/files")
 }
 
 export const getFileLoader = async ({params}) => {
-  const result = await getFile(params.fileId)
+  const result = await getFilesRequest()
 
   if (result.ok) {
     return await result.json();
   }
+}
+
+export const getFileAccessLoader = async ({params}) => {
+  const result = await getFilesRequest();
+  if (result.ok) {
+    const files = await result.json();
+
+    const currentFile = files.filter((file) => file.file_id === params.fileId)[0];
+
+    return currentFile.access
+  }
+}
+
+export const addAccessAction = async ({request, params}) => {
+  const formData = await request.formData();
+  await addFileAccessRequest(params.fileId, formData.get("email"));
+
+  return redirect(`/files/${params.fileId}/access`);
+}
+
+export const deleteAccessAction = async ({request, params}) => {
+  const formData = await request.formData();
+  await deleteFileAccessRequest(params.fileId, formData.get("email"));
+
+  return redirect(`/files/${params.fileId}/access`);
+}
+
+export const uploadFileAction = async ({request}) => {
+  const formData = await request.formData();
+  const files = formData.getAll('files[]');
+  const result = await uploadFileRequest(files);
+
+  return await result.json();
 }
 
 const router = createBrowserRouter([
@@ -92,8 +152,28 @@ const router = createBrowserRouter([
   },
   {
     path: "files/:fileId",
-    loader: getFileLoader,
+    action: editFileAction,
     element: <File />
+  },
+  {
+    path: "files/:fileId/access",
+    loader: getFileAccessLoader,
+    element: <FileAccess />
+  },
+  {
+    path: "files/:fileId/addAccess",
+    action: addAccessAction,
+    element: (<div></div>)
+  },
+  {
+    path: "files/:fileId/deleteAccess",
+    action: deleteAccessAction,
+    element: (<div></div>)
+  },
+  {
+    path: "files/upload",
+    element: <FileUpload />,
+    action: uploadFileAction
   }
 ]);
 root.render(

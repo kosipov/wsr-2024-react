@@ -1,12 +1,22 @@
-import {useLoaderData, useParams} from "react-router-dom";
+import {Form, useLoaderData, useParams} from "react-router-dom";
 
 export const FileAccess = () => {
-    const users = useLoaderData();
-    const userId = useParams();
+    const params = useParams();
+    const loader = useLoaderData();
 
-    const currentUser = users.data.filter((user) => user.id === userId);
-
-    if (!currentUser) {
-        return <div></div>;
-    }
+    return (<div>
+        <Form action={`/files/${params.fileId}/addAccess`} method={'POST'}>
+            <input type={"email"} name={"email"}/>
+        </Form>
+        {loader.map((access) => (
+            <div key={access.email}>
+                {access.fullname + " "}
+                {access.email}
+                <Form action={`/files/${params.fileId}/deleteAccess`} method={"DELETE"}>
+                    <input type={"hidden"} name={"email"} value={access.email} />
+                    <button type={"submit"}>Удалить пользователя</button>
+                </Form>
+            </div>
+        ))}
+    </div>)
 }
